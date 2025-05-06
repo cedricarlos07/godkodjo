@@ -538,7 +538,11 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
         .replace(/{instructor}/g, instructorName)
         .replace(/{time}/g, sessionTime)
         .replace(/{date}/g, sessionDate)
-        .replace(/{zoom_link}/g, session.zoomMeetingUrl || "#");
+        .replace(/{zoom_link}/g, session.zoomMeetingUrl || "#")
+        // Ajouter des informations supplémentaires pour rendre le message plus engageant
+        .replace(/{session_number}/g, session.sessionNumber.toString())
+        .replace(/{course_level}/g, course.level || "Tous niveaux")
+        .replace(/{course_description}/g, course.description || "Cours d'anglais");
 
       // Envoyer le message via Telegram
       try {

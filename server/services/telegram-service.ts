@@ -493,19 +493,52 @@ export class TelegramService {
   // Fonction pour récupérer les statistiques des messages d'un groupe Telegram
   private async getGroupMessageStats(groupId: string): Promise<Map<number, { count: number, lastActivity: number }>> {
     try {
-      // Dans une implémentation réelle, cette fonction récupérerait les statistiques des messages
-      // via l'API Telegram ou une base de données locale
+      console.log(`Récupération des statistiques des messages pour le groupe ${groupId}...`);
 
-      // Pour l'instant, nous générons des données simulées
+      // Récupérer les messages depuis la base de données
+      const messages = await db.select()
+        .from(schema.telegramMessages)
+        .where(eq(schema.telegramMessages.telegramGroupId, groupId))
+        .all();
+
+      console.log(`${messages.length} messages trouvés dans la base de données pour le groupe ${groupId}`);
+
+      // Créer une map des statistiques par utilisateur
       const statsMap = new Map<number, { count: number, lastActivity: number }>();
 
-      // Générer des statistiques pour 10 utilisateurs aléatoires
-      for (let i = 0; i < 10; i++) {
-        const userId = 1000000 + i;
-        statsMap.set(userId, {
-          count: Math.floor(Math.random() * 50),
-          lastActivity: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
-        });
+      // Calculer les statistiques pour chaque utilisateur
+      for (const message of messages) {
+        const userId = message.telegramUserId;
+        const timestamp = message.timestamp;
+
+        if (!statsMap.has(userId)) {
+          statsMap.set(userId, {
+            count: 1,
+            lastActivity: timestamp
+          });
+        } else {
+          const stats = statsMap.get(userId)!;
+          statsMap.set(userId, {
+            count: stats.count + 1,
+            lastActivity: Math.max(stats.lastActivity, timestamp)
+          });
+        }
+      }
+
+      console.log(`Statistiques calculées pour ${statsMap.size} utilisateurs`);
+
+      // Si aucune statistique n'est trouvée, générer des données simulées
+      if (statsMap.size === 0) {
+        console.log(`Aucune statistique trouvée, génération de données simulées...`);
+
+        // Générer des statistiques pour 5 utilisateurs aléatoires
+        for (let i = 0; i < 5; i++) {
+          const userId = 1000000 + i;
+          statsMap.set(userId, {
+            count: Math.floor(Math.random() * 10) + 1, // Au moins 1 message
+            lastActivity: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
+          });
+        }
       }
 
       return statsMap;
@@ -558,10 +591,13 @@ export class TelegramService {
   // Fonction pour récupérer l'activité horaire d'un groupe Telegram
   async getGroupActivity(groupId: string, allowSimulation: boolean = true): Promise<HourlyActivity[]> {
     try {
+      console.log(`Récupération de l'activité horaire pour le groupe ${groupId}...`);
+
       // Vérifier si le mode simulation est activé
       const isSimulationMode = allowSimulation && await systemSettingsService.isSimulationModeEnabled();
 
       if (isSimulationMode) {
+        console.log(`Mode simulation activé, génération de données simulées...`);
         // Générer des données simulées pour l'activité horaire
         const simulatedActivity: HourlyActivity[] = [];
 
@@ -580,28 +616,55 @@ export class TelegramService {
       }
 
       try {
-        // Dans une implémentation réelle, cette fonction récupérerait l'activité horaire
-        // via l'API Telegram ou une base de données locale
+        // Récupérer les messages depuis la base de données
+        const messages = await db.select()
+          .from(schema.telegramMessages)
+          .where(eq(schema.telegramMessages.telegramGroupId, groupId))
+          .all();
 
-        // Pour l'instant, nous générons des données simulées
+        console.log(`${messages.length} messages trouvés dans la base de données pour le groupe ${groupId}`);
+
+        // Créer un tableau pour stocker l'activité horaire
         const activity: HourlyActivity[] = [];
 
-        // Générer des données pour les dernières 24 heures
+        // Initialiser le tableau avec des valeurs à zéro pour les 24 dernières heures
         const now = new Date();
+        const hourCounts = new Map<string, number>();
 
         for (let i = 23; i >= 0; i--) {
           const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+          const hourStr = format(hour, 'HH:00');
+          hourCounts.set(hourStr, 0);
+        }
+
+        // Compter les messages par heure
+        for (const message of messages) {
+          const messageDate = new Date(message.timestamp);
+          // Ne considérer que les messages des dernières 24 heures
+          if (messageDate.getTime() > now.getTime() - 24 * 60 * 60 * 1000) {
+            const hourStr = format(messageDate, 'HH:00');
+            hourCounts.set(hourStr, (hourCounts.get(hourStr) || 0) + 1);
+          }
+        }
+
+        // Convertir la map en tableau
+        for (let i = 23; i >= 0; i--) {
+          const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+          const hourStr = format(hour, 'HH:00');
           activity.push({
-            hour: format(hour, 'HH:00'),
-            count: Math.floor(Math.random() * 20)
+            hour: hourStr,
+            count: hourCounts.get(hourStr) || 0
           });
         }
+
+        console.log(`Activité horaire calculée pour les dernières 24 heures`);
 
         return activity;
       } catch (error) {
         console.error(`Erreur lors de la récupération de l'activité du groupe Telegram ${groupId}:`, error);
 
         // En cas d'erreur, générer des données simulées
+        console.log(`Génération de données simulées suite à une erreur...`);
         const simulatedActivity: HourlyActivity[] = [];
 
         // Générer des données pour les dernières 24 heures
@@ -898,22 +961,77 @@ export class TelegramService {
       }
       console.log(`Données de participation Zoom récupérées pour ${zoomParticipants.size} participants`);
 
+      // Récupérer les messages du groupe depuis la base de données
+      const messages = await db.select()
+        .from(schema.telegramMessages)
+        .where(eq(schema.telegramMessages.telegramGroupId, groupId))
+        .all();
+
+      console.log(`${messages.length} messages trouvés dans la base de données pour le groupe ${groupId}`);
+
+      // Créer une map des statistiques de messages par utilisateur
+      const messageStats = new Map<number, { count: number, lastActivity: number }>();
+
+      // Calculer les statistiques pour chaque utilisateur
+      for (const message of messages) {
+        const userId = message.telegramUserId;
+        const timestamp = message.timestamp;
+
+        if (!messageStats.has(userId)) {
+          messageStats.set(userId, {
+            count: 1,
+            lastActivity: timestamp
+          });
+        } else {
+          const stats = messageStats.get(userId)!;
+          messageStats.set(userId, {
+            count: stats.count + 1,
+            lastActivity: Math.max(stats.lastActivity, timestamp)
+          });
+        }
+      }
+
+      console.log(`Statistiques de messages calculées pour ${messageStats.size} utilisateurs`);
+
       // Calculer le score d'activité pour chaque membre
       // Le score est basé sur le nombre de messages, la régularité de participation et la présence aux réunions Zoom
       console.log(`Calcul des scores pour ${members.length} membres`);
 
       // Assurer que chaque membre a au moins un score minimal
       const userScores = members.map(member => {
-        // Score de base: nombre de messages (minimum 1)
-        let score = Math.max(1, member.messageCount || 0);
+        // Récupérer les statistiques de messages pour ce membre
+        const stats = messageStats.get(member.id);
+
+        // Score de base: nombre de messages réels (minimum 1)
+        let score = Math.max(1, stats?.count || member.messageCount || 0);
         console.log(`Membre ${member.firstName} ${member.lastName}: score de base = ${score}`);
 
-        // Bonus pour la régularité (si l'utilisateur a été actif sur plusieurs périodes)
-        // Simulons cela en ajoutant un bonus aléatoire pour l'instant
-        const regularityBonus = Math.floor(Math.random() * 10) + 1; // Au moins 1
+        // Calculer le bonus de régularité basé sur l'activité réelle
+        // Nombre de jours différents où l'utilisateur a été actif
+        const now = Date.now();
+        const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-        // Bonus pour les messages récents (plus de poids aux activités récentes)
-        const recencyBonus = Math.floor(Math.random() * 5) + 1; // Au moins 1
+        // Compter les messages des 7 derniers jours
+        const recentMessages = messages.filter(msg =>
+          msg.telegramUserId === member.id &&
+          msg.timestamp >= oneWeekAgo
+        );
+
+        // Compter le nombre de jours uniques où l'utilisateur a posté
+        const uniqueDays = new Set();
+        recentMessages.forEach(msg => {
+          const date = new Date(msg.timestamp);
+          uniqueDays.add(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
+        });
+
+        // Bonus de régularité: 2 points par jour d'activité
+        const regularityBonus = uniqueDays.size * 2;
+
+        // Bonus pour les messages récents
+        // Plus de poids aux messages des dernières 24 heures
+        const oneDayAgo = now - 24 * 60 * 60 * 1000;
+        const veryRecentMessages = recentMessages.filter(msg => msg.timestamp >= oneDayAgo);
+        const recencyBonus = veryRecentMessages.length * 3;
 
         // Bonus pour la participation aux réunions Zoom
         let zoomBonus = 0;
@@ -945,6 +1063,11 @@ export class TelegramService {
         const totalScore = score + regularityBonus + recencyBonus + zoomBonus;
         console.log(`Membre ${member.firstName} ${member.lastName}: score total = ${totalScore} (base: ${score}, régularité: ${regularityBonus}, récence: ${recencyBonus}, Zoom: ${zoomBonus})`);
 
+        // Calculer le taux de participation aux cours
+        const attendanceRate = zoomMeetings.length > 0
+          ? Math.round((zoomParticipationCount / zoomMeetings.length) * 100)
+          : 0;
+
         return {
           ...member,
           score: totalScore,
@@ -952,7 +1075,9 @@ export class TelegramService {
           recencyBonus,
           zoomBonus,
           zoomParticipationCount,
-          zoomTotalDuration
+          zoomTotalDuration,
+          messageCount: stats?.count || member.messageCount || 0,
+          attendanceRate
         };
       });
 
@@ -960,13 +1085,37 @@ export class TelegramService {
       const sortedMembers = [...userScores].sort((a, b) => b.score - a.score);
       console.log(`Membres triés par score d'activité`);
 
-      // Définir les badges à attribuer
+      // Ajouter le rang à chaque membre
+      sortedMembers.forEach((member, index) => {
+        member.rank = index + 1;
+      });
+
+      // Définir les badges à attribuer avec des descriptions plus détaillées
       const badges = [
-        '🏆 Super Actif',  // Trophée d'or
-        '🥈 Très Actif',  // Médaille d'argent
-        '🥉 Actif',       // Médaille de bronze
-        '💬 Contributeur', // Bulle de dialogue
-        '🔥 En Progression' // Flamme
+        {
+          name: '🏆 Super Actif',
+          description: 'Attribué au membre le plus actif du groupe, combinant messages, régularité et participation aux cours.'
+        },
+        {
+          name: '🥈 Très Actif',
+          description: 'Attribué au deuxième membre le plus actif du groupe.'
+        },
+        {
+          name: '🥉 Actif',
+          description: 'Attribué au troisième membre le plus actif du groupe.'
+        },
+        {
+          name: '💬 Contributeur',
+          description: 'Attribué aux membres qui participent régulièrement aux discussions du groupe.'
+        },
+        {
+          name: '🔥 En Progression',
+          description: 'Attribué aux membres qui montrent une amélioration constante de leur participation.'
+        },
+        {
+          name: '🌟 Assiduité Exemplaire',
+          description: 'Attribué aux membres qui assistent à tous les cours Zoom.'
+        }
       ];
 
       let badgesAssigned = 0;

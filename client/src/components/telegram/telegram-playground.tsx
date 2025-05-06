@@ -59,6 +59,9 @@ export function TelegramPlayground({
   const [customMessage, setCustomMessage] = useState("");
   const [channelId, setChannelId] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
+  const [channelForwardId, setChannelForwardId] = useState("@kodjoenglish");
+  const [channelForwardName, setChannelForwardName] = useState("KODJO ENGLISH");
+  const [targetGroups, setTargetGroups] = useState<{ id: string; name: string }[]>([]);
   const [features, setFeatures] = useState<TestFeature[]>([
     {
       id: "countMembers",
@@ -131,11 +134,11 @@ export function TelegramPlayground({
       if (!groupId) {
         throw new Error("Veuillez entrer un ID de groupe Telegram");
       }
-      
+
       // Mettre à jour le statut du test
       updateFeatureStatus(testId, "pending", "Test en cours...");
       addLog(`Exécution du test: ${getFeatureName(testId)}`);
-      
+
       return await apiRequestXHR("POST", `/api/telegram/test/run-test`, {
         testId,
         groupId
@@ -145,13 +148,13 @@ export function TelegramPlayground({
       const { testId } = variables;
       updateFeatureStatus(testId, data.success ? "success" : "error", data.message);
       addLog(`Résultat du test ${getFeatureName(testId)}: ${data.message}`);
-      
+
       toast({
         title: data.success ? "Test réussi" : "Test échoué",
         description: data.message,
         variant: data.success ? "default" : "destructive",
       });
-      
+
       // Rafraîchir les données si nécessaire
       if (data.success) {
         onRefresh();
@@ -161,7 +164,7 @@ export function TelegramPlayground({
       const { testId } = variables;
       updateFeatureStatus(testId, "error", error.message);
       addLog(`Erreur lors du test ${getFeatureName(testId)}: ${error.message}`);
-      
+
       toast({
         title: "Erreur",
         description: error.message,
@@ -176,9 +179,9 @@ export function TelegramPlayground({
       if (!groupId || !customMessage) {
         throw new Error("Veuillez entrer un ID de groupe et un message");
       }
-      
+
       addLog(`Envoi d'un message personnalisé dans le groupe ${groupId}`);
-      
+
       return await apiRequestXHR("POST", `/api/telegram/test/send-message`, {
         groupId,
         message: customMessage,
@@ -187,18 +190,18 @@ export function TelegramPlayground({
     },
     onSuccess: () => {
       addLog(`Message personnalisé envoyé avec succès dans le groupe ${groupId}`);
-      
+
       toast({
         title: "Message envoyé",
         description: "Votre message a été envoyé avec succès dans le groupe.",
       });
-      
+
       // Réinitialiser le message
       setCustomMessage("");
     },
     onError: (error) => {
       addLog(`Erreur lors de l'envoi du message personnalisé: ${error.message}`);
-      
+
       toast({
         title: "Erreur",
         description: error.message,
@@ -213,9 +216,9 @@ export function TelegramPlayground({
       if (!groupId || !channelId) {
         throw new Error("Veuillez entrer un ID de groupe et un ID de chaîne");
       }
-      
+
       addLog(`Transfert d'un message depuis la chaîne ${channelId} vers le groupe ${groupId}`);
-      
+
       return await apiRequestXHR("POST", `/api/telegram/test/forward-message`, {
         sourceChannelId: channelId,
         targetGroupId: groupId
@@ -223,7 +226,7 @@ export function TelegramPlayground({
     },
     onSuccess: () => {
       addLog(`Message transféré avec succès depuis la chaîne ${channelId} vers le groupe ${groupId}`);
-      
+
       toast({
         title: "Message transféré",
         description: "Le message a été transféré avec succès.",
@@ -231,7 +234,73 @@ export function TelegramPlayground({
     },
     onError: (error) => {
       addLog(`Erreur lors du transfert du message: ${error.message}`);
-      
+
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation pour configurer le transfert automatique
+  const configureChannelForwardMutation = useMutation({
+    mutationFn: async () => {
+      if (!groupId || !channelForwardId) {
+        throw new Error("Veuillez entrer un ID de groupe et un ID de chaîne");
+      }
+
+      addLog(`Configuration du transfert automatique depuis la chaîne ${channelForwardId} vers le groupe ${groupId}`);
+
+      return await apiRequestXHR("POST", `/api/telegram/channel-forwards`, {
+        sourceChannelId: channelForwardId,
+        sourceChannelName: channelForwardName,
+        targetGroupId: groupId,
+        targetGroupName: `Groupe ${groupId}`
+      });
+    },
+    onSuccess: () => {
+      addLog(`Transfert automatique configuré avec succès depuis la chaîne ${channelForwardId} vers le groupe ${groupId}`);
+
+      // Ajouter le groupe à la liste des groupes cibles
+      if (!targetGroups.some(g => g.id === groupId)) {
+        setTargetGroups(prev => [...prev, { id: groupId, name: `Groupe ${groupId}` }]);
+      }
+
+      toast({
+        title: "Configuration réussie",
+        description: "Le transfert automatique a été configuré avec succès.",
+      });
+    },
+    onError: (error) => {
+      addLog(`Erreur lors de la configuration du transfert automatique: ${error.message}`);
+
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation pour exécuter tous les transferts automatiques
+  const executeAllForwardsMutation = useMutation({
+    mutationFn: async () => {
+      addLog(`Exécution de tous les transferts automatiques configurés`);
+
+      return await apiRequestXHR("POST", `/api/telegram/channel-forwards/execute`, {});
+    },
+    onSuccess: (data) => {
+      addLog(`Transferts automatiques exécutés avec succès: ${data.transferCount || 0} messages transférés`);
+
+      toast({
+        title: "Transferts exécutés",
+        description: `${data.transferCount || 0} messages ont été transférés avec succès.`,
+      });
+    },
+    onError: (error) => {
+      addLog(`Erreur lors de l'exécution des transferts automatiques: ${error.message}`);
+
       toast({
         title: "Erreur",
         description: error.message,
@@ -242,9 +311,9 @@ export function TelegramPlayground({
 
   // Fonction pour mettre à jour le statut d'une fonctionnalité
   const updateFeatureStatus = (id: string, status: TestFeature["status"], message: string) => {
-    setFeatures(prev => prev.map(feature => 
-      feature.id === id 
-        ? { ...feature, status, message, timestamp: Date.now() } 
+    setFeatures(prev => prev.map(feature =>
+      feature.id === id
+        ? { ...feature, status, message, timestamp: Date.now() }
         : feature
     ));
   };
@@ -276,7 +345,7 @@ export function TelegramPlayground({
       });
       return;
     }
-    
+
     sendCustomMessageMutation.mutate();
   };
 
@@ -290,9 +359,50 @@ export function TelegramPlayground({
       });
       return;
     }
-    
+
     forwardMessageMutation.mutate();
   };
+
+  // Fonction pour configurer le transfert automatique
+  const configureChannelForward = () => {
+    if (!channelForwardId) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez entrer un ID de chaîne source.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    configureChannelForwardMutation.mutate();
+  };
+
+  // Fonction pour exécuter tous les transferts automatiques
+  const executeAllForwards = () => {
+    executeAllForwardsMutation.mutate();
+  };
+
+  // Charger les groupes cibles au chargement du composant
+  useEffect(() => {
+    const fetchTargetGroups = async () => {
+      try {
+        const response = await apiRequestXHR("GET", "/api/telegram/channel-forwards");
+        if (response && Array.isArray(response)) {
+          const groups = response.map(config => ({
+            id: config.targetGroupId,
+            name: config.targetGroupName
+          }));
+          setTargetGroups(groups);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des configurations de transfert:", error);
+      }
+    };
+
+    if (isConnected) {
+      fetchTargetGroups();
+    }
+  }, [isConnected]);
 
   return (
     <div className="space-y-6">
@@ -310,10 +420,11 @@ export function TelegramPlayground({
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="messages">Messages</TabsTrigger>
+              <TabsTrigger value="channel">Transfert Canal</TabsTrigger>
               <TabsTrigger value="features">Fonctionnalités</TabsTrigger>
               <TabsTrigger value="logs">Logs</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="messages" className="space-y-4">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -338,9 +449,9 @@ export function TelegramPlayground({
                     </Button>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium">Transférer un message depuis une chaîne</h3>
                   <div className="flex space-x-2">
@@ -364,7 +475,107 @@ export function TelegramPlayground({
                 </div>
               </div>
             </TabsContent>
-            
+
+            <TabsContent value="channel" className="space-y-4">
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-medium text-yellow-800">Transfert automatique des publications</h3>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Cette fonctionnalité permet de transférer automatiquement toutes les publications du canal
+                        <strong> {channelForwardId}</strong> vers les groupes Telegram dédiés.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Configurer le transfert automatique</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">ID du canal source</label>
+                      <Input
+                        placeholder="ID du canal (ex: @kodjoenglish)"
+                        value={channelForwardId}
+                        onChange={(e) => setChannelForwardId(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Nom du canal</label>
+                      <Input
+                        placeholder="Nom du canal"
+                        value={channelForwardName}
+                        onChange={(e) => setChannelForwardName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-500">
+                      Groupe cible: <strong>{groupId || "Non défini"}</strong>
+                    </p>
+                    <Button
+                      onClick={configureChannelForward}
+                      disabled={!isConnected || !channelForwardId || !groupId || configureChannelForwardMutation.isPending}
+                    >
+                      {configureChannelForwardMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                      )}
+                      Configurer
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Groupes configurés pour le transfert automatique</h3>
+                  {targetGroups.length > 0 ? (
+                    <div className="bg-white border rounded-md">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Groupe</TableHead>
+                            <TableHead>ID</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {targetGroups.map((group) => (
+                            <TableRow key={group.id}>
+                              <TableCell>{group.name}</TableCell>
+                              <TableCell>{group.id}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 rounded-md border border-gray-200">
+                      <p className="text-gray-500">Aucun groupe configuré pour le transfert automatique</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={executeAllForwards}
+                    disabled={!isConnected || targetGroups.length === 0 || executeAllForwardsMutation.isPending}
+                    variant="default"
+                  >
+                    {executeAllForwardsMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="mr-2 h-4 w-4" />
+                    )}
+                    Exécuter tous les transferts maintenant
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
             <TabsContent value="features" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {features.map((feature) => (
@@ -392,7 +603,7 @@ export function TelegramPlayground({
                           )}
                         </Button>
                       </div>
-                      
+
                       {feature.status !== "idle" && (
                         <div className="mt-4">
                           <div className="flex items-center space-x-2">
@@ -424,7 +635,7 @@ export function TelegramPlayground({
                 ))}
               </div>
             </TabsContent>
-            
+
             <TabsContent value="logs" className="space-y-4">
               <div className="bg-gray-100 p-4 rounded-md h-[400px] overflow-y-auto font-mono text-sm">
                 {logs.length > 0 ? (
