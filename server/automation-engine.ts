@@ -72,13 +72,15 @@ function scheduleSessionBasedTasks() {
 
       // Récupérer les sessions à venir dans les prochaines 24 heures
       const now = new Date();
+      const nowTimestamp = now.getTime();
       const in24Hours = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+      const in24HoursTimestamp = in24Hours.getTime();
 
       const upcomingSessions = await db.select()
         .from(sessions)
         .where(and(
-          gt(sessions.scheduledDate, now),
-          lte(sessions.scheduledDate, in24Hours)
+          gt(sessions.scheduledDate, nowTimestamp),
+          lte(sessions.scheduledDate, in24HoursTimestamp)
         ));
 
       for (const session of upcomingSessions) {
@@ -190,8 +192,11 @@ async function executeTelegramMessageAction(rule: typeof automationRules.$inferS
   // Récupérer les cours et les sessions pour aujourd'hui
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayTimestamp = today.getTime();
+
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowTimestamp = tomorrow.getTime();
 
   const todaySessions = await db.select({
     session: sessions,
@@ -200,8 +205,8 @@ async function executeTelegramMessageAction(rule: typeof automationRules.$inferS
   .from(sessions)
   .leftJoin(courses, eq(sessions.courseId, courses.id))
   .where(and(
-    gte(sessions.scheduledDate, today),
-    lt(sessions.scheduledDate, tomorrow)
+    gte(sessions.scheduledDate, todayTimestamp),
+    lt(sessions.scheduledDate, tomorrowTimestamp)
   ));
 
   // Pour chaque session, envoyer un message dans le groupe Telegram correspondant
@@ -295,8 +300,11 @@ async function executeZoomMeetingCreation(rule: typeof automationRules.$inferSel
   // Récupérer les sessions pour aujourd'hui
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayTimestamp = today.getTime();
+
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowTimestamp = tomorrow.getTime();
 
   const todaySessions = await db.select({
     session: sessions,
@@ -305,8 +313,8 @@ async function executeZoomMeetingCreation(rule: typeof automationRules.$inferSel
   .from(sessions)
   .leftJoin(courses, eq(sessions.courseId, courses.id))
   .where(and(
-    gte(sessions.scheduledDate, today),
-    lt(sessions.scheduledDate, tomorrow),
+    gte(sessions.scheduledDate, todayTimestamp),
+    lt(sessions.scheduledDate, tomorrowTimestamp),
     eq(sessions.zoomMeetingId, null)
   ));
 

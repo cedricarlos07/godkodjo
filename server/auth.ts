@@ -6,10 +6,10 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User } from "@shared/schema-sqlite";
-import SQLiteStore from "better-sqlite3-session-store";
-import { sqlite } from "./db";
+// Utiliser MemoryStore au lieu de SQLiteStore
+const MemoryStore = session.MemoryStore;
 
-const SQLiteStoreFactory = SQLiteStore(session);
+// Supprimé: const SQLiteStoreFactory = SQLiteStore(session);
 
 const scryptAsync = promisify(scrypt);
 
@@ -51,31 +51,26 @@ export function isProfessorOrAdmin(req: Request, res: Response, next: NextFuncti
 }
 
 export function setupAuth(app: Express) {
-  // Initialize session storage with SQLite
-  const sessionStore = new SQLiteStoreFactory({
-    client: sqlite,
-    expired: {
-      clear: true,
-      intervalMs: 900000 // 15min
-    }
+  // Initialize session storage with MemoryStore
+  const sessionStore = new MemoryStore({
+    checkPeriod: 86400000 // 24h - Nettoyer les sessions expirées
   });
 
   // Session configuration
   app.use(session({
     store: sessionStore,
     secret: process.env.SESSION_SECRET || 'kodjo-english-secret',
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Changé à true pour forcer la sauvegarde de la session
+    saveUninitialized: true, // Changé à true pour créer une session pour chaque visiteur
+    name: 'kodjo.sid', // Nom personnalisé pour le cookie de session
     cookie: {
-      // Désactiver temporairement secure pour tester
-      secure: false, // Normalement: process.env.NODE_ENV === "production"
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-      sameSite: 'lax', // Permet l'envoi des cookies lors de la navigation
-      httpOnly: true, // Empêche l'accès aux cookies via JavaScript
-      path: '/', // Assure que le cookie est disponible sur tout le site
-      domain: '.onrender.com', // Domaine pour les cookies (optionnel)
+      secure: false, // Désactivé pour permettre HTTP
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 semaine
+      sameSite: 'none', // Permet les requêtes cross-site
+      httpOnly: true,
+      path: '/',
     },
-    proxy: true, // Faire confiance au proxy (important pour Render)
+    proxy: true, // Important pour Render
   }));
 
   // Initialize Passport
