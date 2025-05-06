@@ -3,8 +3,8 @@ services:
     name: kodjo-english-app
     env: node
     nodeVersion: 18.18.0
-    buildCommand: chmod +x render-build.sh && ./render-build.sh
-    startCommand: chmod +x render-start.sh && ./render-start.sh
+    buildCommand: npm run render:build
+    startCommand: npm run render:start
     envVars:
       - key: NODE_ENV
         value: production
@@ -12,6 +12,10 @@ services:
         value: /api
       - key: VITE_DISABLE_CHARTS_SSR
         value: "true"
+      - key: DATABASE_TYPE
+        value: sqlite
+      - key: DATABASE_PATH
+        value: ./data/kodjo-english-v2.db
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: ZOOM_CLIENT_ID
