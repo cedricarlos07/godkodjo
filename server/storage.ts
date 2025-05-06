@@ -13,15 +13,23 @@ import {
   users, courses, sessions, attendance, telegramActivity,
   badges, userBadges, automationRules, templateMessages, activityLogs, messageLogs
 } from "@shared/schema-sqlite";
-import { db, sqlite } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { db, sqlite, dbType, eq } from "./db";
+import { and, desc, sql } from "drizzle-orm";
 import session from "express-session";
-import SQLiteStore from "better-sqlite3-session-store";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import MemoryStore from "memorystore";
 
 const scryptAsync = promisify(scrypt);
-const SQLiteStoreFactory = SQLiteStore(session);
+let SQLiteStoreFactory: any;
+
+// Essayer d'importer better-sqlite3-session-store si disponible
+try {
+  const SQLiteStore = require("better-sqlite3-session-store");
+  SQLiteStoreFactory = SQLiteStore(session);
+} catch (error) {
+  console.warn("better-sqlite3-session-store n'est pas disponible, utilisation de memorystore à la place");
+}
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -112,36 +120,56 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Vérifier si la table de sessions existe
-    try {
-      const tableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'").get();
-      if (!tableExists) {
-        console.log("Création de la table de sessions...");
-        sqlite.exec(`
-          CREATE TABLE IF NOT EXISTS sessions (
-            sid TEXT PRIMARY KEY,
-            sess TEXT NOT NULL,
-            expire INTEGER NOT NULL
-          )
-        `);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la vérification de la table de sessions:", error);
-    }
+    // Initialiser le store de session en fonction du type de base de données
+    if (dbType === 'sqlite' && SQLiteStoreFactory) {
+      try {
+        // Vérifier si la table de sessions existe
+        const tableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'").get();
+        if (!tableExists) {
+          console.log("Création de la table de sessions...");
+          sqlite.exec(`
+            CREATE TABLE IF NOT EXISTS sessions (
+              sid TEXT PRIMARY KEY,
+              sess TEXT NOT NULL,
+              expire INTEGER NOT NULL
+            )
+          `);
+        }
 
-    // Initialiser le store de session avec des paramètres plus robustes
-    this.sessionStore = new SQLiteStoreFactory({
-      client: sqlite,
-      expired: {
-        clear: true,
-        intervalMs: 300000 // 5min
-      },
-      // Augmenter la fréquence de sauvegarde des sessions
-      // et s'assurer que les sessions sont persistantes
-      keepAlive: true,
-      retries: 5,
-      ttl: 7 * 24 * 60 * 60 // 7 jours en secondes
+        // Initialiser le store de session avec des paramètres plus robustes
+        this.sessionStore = new SQLiteStoreFactory({
+          client: sqlite,
+          expired: {
+            clear: true,
+            intervalMs: 300000 // 5min
+          },
+          // Augmenter la fréquence de sauvegarde des sessions
+          // et s'assurer que les sessions sont persistantes
+          keepAlive: true,
+          retries: 5,
+          ttl: 7 * 24 * 60 * 60 // 7 jours en secondes
+        });
+
+        console.log("Session store SQLite initialisé avec succès");
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation du session store SQLite:", error);
+        this.initMemoryStore();
+      }
+    } else {
+      console.log("Utilisation du session store en mémoire");
+      this.initMemoryStore();
+    }
+  }
+
+  // Initialiser un store de session en mémoire
+  private initMemoryStore() {
+    const MemoryStoreFactory = MemoryStore(session);
+    this.sessionStore = new MemoryStoreFactory({
+      checkPeriod: 86400000, // 24h en millisecondes
+      max: 1000, // Nombre maximum de sessions en mémoire
+      ttl: 7 * 24 * 60 * 60 * 1000 // 7 jours en millisecondes
     });
+    console.log("Session store en mémoire initialisé avec succès");
   }
 
   // User operations

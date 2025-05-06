@@ -3,6 +3,27 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initAutomationEngine } from "./automation-engine";
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+
+// Charger les variables d'environnement
+dotenv.config();
+
+// Charger les variables d'environnement locales si elles existent
+const envLocalPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  console.log(`Chargement des variables d'environnement locales depuis ${envLocalPath}`);
+  const envLocal = dotenv.parse(fs.readFileSync(envLocalPath));
+  for (const key in envLocal) {
+    process.env[key] = envLocal[key];
+  }
+}
+
+// Forcer l'utilisation de la base de données en mémoire en production
+if (process.env.NODE_ENV === 'production') {
+  console.log('Environnement de production détecté, utilisation forcée de la base de données en mémoire');
+  process.env.USE_MEMORY_DB = 'true';
+}
 
 // Charger les variables d'environnement depuis le fichier .env
 dotenv.config();
@@ -129,7 +150,15 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5007
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5007;
+  const port = process.env.PORT || 5007;
+
+  // Créer le répertoire de données s'il n'existe pas
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    console.log(`Création du répertoire de données: ${dataDir}`);
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
   server.listen({
     port,
     host: "0.0.0.0", // Écouter sur toutes les interfaces réseau
