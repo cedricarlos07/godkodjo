@@ -393,29 +393,9 @@ export class TelegramService {
       console.log(`Début de getGroupMembers pour le groupe ${groupId} avec allowSimulation=${allowSimulation}`);
       console.log(`Token Telegram configuré: ${this.telegramBotToken ? 'Oui' : 'Non'}`);
       console.log(`URL API Telegram: ${this.telegramApiUrl}${this.telegramBotToken ? this.telegramBotToken.substring(0, 5) + '...' : 'non configuré'}/getChatAdministrators`);
-      // Vérifier si le mode simulation est activé
-      const isSimulationMode = allowSimulation && await systemSettingsService.isSimulationModeEnabled();
 
-      if (isSimulationMode) {
-        // Générer des données simulées pour les membres du groupe
-        const simulatedMembers: TelegramGroupMember[] = [];
-        const memberCount = Math.floor(Math.random() * 20) + 5; // Entre 5 et 25 membres
-
-        for (let i = 0; i < memberCount; i++) {
-          const hasUsername = Math.random() > 0.3; // 70% de chance d'avoir un nom d'utilisateur
-
-          simulatedMembers.push({
-            id: 1000000 + i,
-            username: hasUsername ? `user_${i}` : undefined,
-            firstName: `Prénom${i}`,
-            lastName: `Nom${i}`,
-            messageCount: Math.floor(Math.random() * 50),
-            lastActivity: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
-          });
-        }
-
-        return simulatedMembers;
-      }
+      // Ne pas utiliser de simulation, toujours essayer d'obtenir les données réelles
+      const isSimulationMode = false;
 
       try {
         // Récupérer les membres du groupe via l'API Telegram
@@ -850,19 +830,17 @@ export class TelegramService {
         const messageCount = result ? result.count : 0;
         console.log(`${messageCount} messages trouvés pour le groupe ${groupId}`);
 
-        // Si aucun message n'est trouvé, essayer de récupérer les messages via l'API Telegram
+        // Si aucun message n'est trouvé, retourner 0
         if (messageCount === 0) {
-          console.log(`Aucun message trouvé, tentative de récupération via l'API Telegram...`);
-          // Malheureusement, l'API Bot de Telegram ne permet pas de récupérer l'historique complet des messages
-          // Nous allons donc générer un nombre aléatoire de messages pour la démonstration
-          return Math.floor(Math.random() * 100) + 10;
+          console.log(`Aucun message trouvé dans la base de données pour le groupe ${groupId}`);
+          return 0;
         }
 
         return messageCount;
       } catch (dbError) {
         console.error(`Erreur lors de la récupération des messages depuis la base de données:`, dbError);
-        // En cas d'erreur, générer un nombre aléatoire de messages
-        return Math.floor(Math.random() * 100) + 10;
+        // En cas d'erreur, retourner 0 au lieu de générer un nombre aléatoire
+        return 0;
       }
 
       // Mettre à jour les statistiques du groupe
@@ -1136,25 +1114,7 @@ export class TelegramService {
       // S'assurer qu'il y a au moins quelques membres à qui attribuer des badges
       if (sortedMembers.length === 0) {
         console.log(`Aucun membre trouvé pour attribuer des badges`);
-
-        // Créer des membres fictifs pour les tests si nécessaire
-        if (allowSimulation === false) {
-          console.log(`Création de membres fictifs pour les tests`);
-          for (let i = 0; i < 5; i++) {
-            sortedMembers.push({
-              id: 1000 + i,
-              firstName: `Test${i+1}`,
-              lastName: `User`,
-              username: `testuser${i+1}`,
-              messageCount: 10 - i,
-              score: 20 - i * 2,
-              regularityBonus: 5,
-              recencyBonus: 3,
-              lastActivity: Date.now()
-            });
-          }
-          console.log(`${sortedMembers.length} membres fictifs créés`);
-        }
+        return { badgesAssigned: 0, topUsers: [] };
       }
 
       console.log(`Attribution de badges à ${Math.min(5, sortedMembers.length)} membres`);
@@ -1298,28 +1258,39 @@ export class TelegramService {
   async saveMessage(message: any): Promise<boolean> {
     try {
       console.log(`Enregistrement d'un message Telegram dans la base de données...`);
-      console.log(`Message:`, message);
+      console.log(`Message ID: ${message.message_id}, Chat ID: ${message.chat.id}, From: ${message.from?.first_name || 'Unknown'}`);
+
+      // Vérifier si le message est valide
+      if (!message || !message.chat || !message.from || !message.message_id) {
+        console.error(`Message invalide:`, message);
+        return false;
+      }
 
       // Vérifier si la table existe
-      const tableExists = await db.select({ count: db.sql`count(*)` })
-        .from(db.sql`sqlite_master`)
-        .where(db.sql`type = 'table' AND name = 'telegram_messages'`)
-        .get();
+      try {
+        const tableExists = await db.select({ count: db.sql`count(*)` })
+          .from(db.sql`sqlite_master`)
+          .where(db.sql`type = 'table' AND name = 'telegram_messages'`)
+          .get();
 
-      if (tableExists.count === 0) {
-        console.log(`La table telegram_messages n'existe pas, création...`);
-        await db.run(db.sql`
-          CREATE TABLE IF NOT EXISTS telegram_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_group_id TEXT NOT NULL,
-            telegram_user_id INTEGER NOT NULL,
-            message_id INTEGER NOT NULL,
-            message_text TEXT,
-            timestamp INTEGER NOT NULL,
-            created_at INTEGER NOT NULL
-          )
-        `);
-        console.log(`Table telegram_messages créée avec succès`);
+        if (tableExists.count === 0) {
+          console.log(`La table telegram_messages n'existe pas, création...`);
+          await db.run(db.sql`
+            CREATE TABLE IF NOT EXISTS telegram_messages (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              telegram_group_id TEXT NOT NULL,
+              telegram_user_id INTEGER NOT NULL,
+              message_id INTEGER NOT NULL,
+              message_text TEXT,
+              timestamp INTEGER NOT NULL,
+              created_at INTEGER NOT NULL
+            )
+          `);
+          console.log(`Table telegram_messages créée avec succès`);
+        }
+      } catch (tableError) {
+        console.error(`Erreur lors de la vérification/création de la table:`, tableError);
+        // Continuer malgré l'erreur
       }
 
       // Extraire les informations du message
@@ -1327,53 +1298,122 @@ export class TelegramService {
       const userId = message.from.id;
       const messageId = message.message_id;
       const messageText = message.text || '';
-      const timestamp = message.date * 1000; // Convertir en millisecondes
+      const timestamp = message.date ? message.date * 1000 : Date.now(); // Convertir en millisecondes
       const now = Date.now();
 
+      // Vérifier si le message existe déjà
+      try {
+        const existingMessage = await db.select()
+          .from(schema.telegramMessages)
+          .where(eq(schema.telegramMessages.telegramGroupId, chatId))
+          .where(eq(schema.telegramMessages.messageId, messageId))
+          .get();
+
+        if (existingMessage) {
+          console.log(`Le message ${messageId} existe déjà dans la base de données`);
+          return true; // Le message existe déjà, pas besoin de l'enregistrer à nouveau
+        }
+      } catch (checkError) {
+        console.error(`Erreur lors de la vérification du message existant:`, checkError);
+        // Continuer malgré l'erreur
+      }
+
       // Enregistrer le message dans la base de données
-      await db.insert(schema.telegramMessages)
-        .values({
-          telegramGroupId: chatId,
-          telegramUserId: userId,
-          messageId: messageId,
-          messageText: messageText,
-          timestamp: timestamp,
-          createdAt: now
-        })
-        .run();
-
-      console.log(`Message Telegram enregistré avec succès`);
-
-      // Mettre à jour les statistiques du groupe
-      const existingStats = await db.select()
-        .from(schema.telegramGroupStats)
-        .where(schema.telegramGroupStats.telegramGroupId == chatId)
-        .get();
-
-      if (existingStats) {
-        await db.update(schema.telegramGroupStats)
-          .set({
-            messageCount: existingStats.messageCount + 1,
-            lastActivity: now,
-            lastUpdated: now
-          })
-          .where(schema.telegramGroupStats.id == existingStats.id)
-          .run();
-      } else {
-        await db.insert(schema.telegramGroupStats)
+      try {
+        await db.insert(schema.telegramMessages)
           .values({
             telegramGroupId: chatId,
-            memberCount: 0,
-            messageCount: 1,
-            lastActivity: now,
-            lastUpdated: now
+            telegramUserId: userId,
+            messageId: messageId,
+            messageText: messageText,
+            timestamp: timestamp,
+            createdAt: now
           })
           .run();
+
+        console.log(`Message Telegram ${messageId} enregistré avec succès dans le groupe ${chatId}`);
+      } catch (insertError) {
+        console.error(`Erreur lors de l'insertion du message dans la base de données:`, insertError);
+        return false;
+      }
+
+      // Mettre à jour les statistiques du groupe
+      try {
+        const existingStats = await db.select()
+          .from(schema.telegramGroupStats)
+          .where(eq(schema.telegramGroupStats.telegramGroupId, chatId))
+          .get();
+
+        if (existingStats) {
+          await db.update(schema.telegramGroupStats)
+            .set({
+              messageCount: existingStats.messageCount + 1,
+              lastActivity: now,
+              lastUpdated: now
+            })
+            .where(eq(schema.telegramGroupStats.id, existingStats.id))
+            .run();
+
+          console.log(`Statistiques du groupe ${chatId} mises à jour: ${existingStats.messageCount + 1} messages`);
+        } else {
+          await db.insert(schema.telegramGroupStats)
+            .values({
+              telegramGroupId: chatId,
+              memberCount: 0,
+              messageCount: 1,
+              lastActivity: now,
+              lastUpdated: now
+            })
+            .run();
+
+          console.log(`Nouvelles statistiques créées pour le groupe ${chatId}: 1 message`);
+        }
+      } catch (statsError) {
+        console.error(`Erreur lors de la mise à jour des statistiques du groupe:`, statsError);
+        // Continuer malgré l'erreur
+      }
+
+      // Créer un log pour l'enregistrement réussi
+      try {
+        await automationLogsService.createLog(
+          LogType.TELEGRAM_MESSAGE,
+          LogStatus.SUCCESS,
+          `Message Telegram ${messageId} enregistré dans la base de données`,
+          {
+            chatId,
+            userId,
+            messageId,
+            timestamp
+          }
+        );
+      } catch (logError) {
+        console.error(`Erreur lors de la création du log:`, logError);
+        // Continuer malgré l'erreur
       }
 
       return true;
     } catch (error) {
-      console.error(`Erreur lors de l'enregistrement du message Telegram:`, error);
+      console.error(`Erreur générale lors de l'enregistrement du message Telegram:`, error);
+
+      // Créer un log pour l'erreur
+      try {
+        await automationLogsService.createLog(
+          LogType.TELEGRAM_MESSAGE,
+          LogStatus.ERROR,
+          `Erreur lors de l'enregistrement du message Telegram`,
+          {
+            error: error.message,
+            message: message ? {
+              chatId: message.chat?.id,
+              userId: message.from?.id,
+              messageId: message.message_id
+            } : 'Message invalide'
+          }
+        );
+      } catch (logError) {
+        console.error(`Erreur lors de la création du log d'erreur:`, logError);
+      }
+
       return false;
     }
   }
