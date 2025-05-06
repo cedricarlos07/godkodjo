@@ -4,7 +4,7 @@ services:
     env: node
     nodeVersion: 18.18.0
     buildCommand: npm run render:build
-    startCommand: npm run start:pg
+    startCommand: chmod +x render-pg-start.sh && ./render-pg-start.sh
     envVars:
       - key: NODE_ENV
         value: production

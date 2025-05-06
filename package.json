@@ -28,7 +28,9 @@
     "db:pg:studio": "npx drizzle-kit studio",
     "render:start": "chmod +x render-start.sh && ./render-start.sh",
     "render:build": "chmod +x render-build.sh && ./render-build.sh",
-    "render:safe-start": "node fix-path-error.js && node no-sqlite.js && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js"
+    "render:safe-start": "node fix-path-error.js && node no-sqlite.js && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js",
+    "render:pg-start": "chmod +x render-pg-start.sh && ./render-pg-start.sh",
+    "check:pg": "node check-pg-connection.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
