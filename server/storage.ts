@@ -112,12 +112,35 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
+    // Vérifier si la table de sessions existe
+    try {
+      const tableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'").get();
+      if (!tableExists) {
+        console.log("Création de la table de sessions...");
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS sessions (
+            sid TEXT PRIMARY KEY,
+            sess TEXT NOT NULL,
+            expire INTEGER NOT NULL
+          )
+        `);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vérification de la table de sessions:", error);
+    }
+
+    // Initialiser le store de session avec des paramètres plus robustes
     this.sessionStore = new SQLiteStoreFactory({
       client: sqlite,
       expired: {
         clear: true,
-        intervalMs: 900000 // 15min
-      }
+        intervalMs: 300000 // 5min
+      },
+      // Augmenter la fréquence de sauvegarde des sessions
+      // et s'assurer que les sessions sont persistantes
+      keepAlive: true,
+      retries: 5,
+      ttl: 7 * 24 * 60 * 60 // 7 jours en secondes
     });
   }
 

@@ -69,12 +69,32 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      sameSite: 'lax', // Permet l'envoi des cookies lors de la navigation
+      httpOnly: true, // Empêche l'accès aux cookies via JavaScript
+      path: '/', // Assure que le cookie est disponible sur tout le site
     },
   }));
 
   // Initialize Passport
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Middleware de débogage pour les sessions
+  if (process.env.NODE_ENV === "production") {
+    app.use((req, res, next) => {
+      // Vérifier si la session existe
+      if (!req.session) {
+        console.error("Session non disponible");
+      }
+
+      // Vérifier si l'utilisateur est authentifié
+      if (req.isAuthenticated()) {
+        console.log(`Utilisateur authentifié: ${req.user.username}`);
+      }
+
+      next();
+    });
+  }
 
   // Configure local strategy
   passport.use(new LocalStrategy(async (username, password, done) => {
