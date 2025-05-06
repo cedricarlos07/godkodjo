@@ -30,10 +30,11 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     rollupOptions: {
-      external: ['chart.js'],
+      external: ['chart.js', 'react-chartjs-2'],
       output: {
         globals: {
-          'chart.js': 'Chart'
+          'chart.js': 'Chart',
+          'react-chartjs-2': 'ReactChartJS2'
         }
       }
     }

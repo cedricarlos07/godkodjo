@@ -2,11 +2,16 @@ services:
   - type: web
     name: kodjo-english-app
     env: node
-    buildCommand: npm install && npm run build
+    nodeVersion: 18.18.0
+    buildCommand: chmod +x render-build.sh && ./render-build.sh
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: VITE_API_URL
+        value: /api
+      - key: VITE_DISABLE_CHARTS_SSR
+        value: "true"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: ZOOM_CLIENT_ID

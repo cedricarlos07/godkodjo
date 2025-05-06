@@ -31,19 +31,32 @@ export default defineConfig({
     // Stratégie de chunking pour optimiser le chargement
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-label',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-tabs',
-            'class-variance-authority',
-            'clsx',
-            'tailwind-merge'
-          ],
-          // Isoler les bibliothèques de graphiques dans leur propre chunk
-          charts: ['chart.js', 'react-chartjs-2']
+        manualChunks: function(id) {
+          // Regrouper les modules React dans un chunk
+          if (id.includes('node_modules/react') ||
+              id.includes('node_modules/wouter') ||
+              id.includes('node_modules/scheduler')) {
+            return 'vendor-react';
+          }
+
+          // Regrouper les composants UI dans un chunk
+          if (id.includes('node_modules/@radix-ui') ||
+              id.includes('node_modules/class-variance-authority') ||
+              id.includes('node_modules/clsx') ||
+              id.includes('node_modules/tailwind-merge')) {
+            return 'vendor-ui';
+          }
+
+          // Isoler les bibliothèques de graphiques
+          if (id.includes('node_modules/chart.js') ||
+              id.includes('node_modules/react-chartjs-2')) {
+            return 'vendor-charts';
+          }
+
+          // Autres modules node_modules dans un chunk séparé
+          if (id.includes('node_modules')) {
+            return 'vendor-deps';
+          }
         },
         // Éviter les problèmes de chargement asynchrone
         inlineDynamicImports: false,
@@ -60,8 +73,17 @@ export default defineConfig({
       overlay: false,
     },
   },
-  // Configuration pour éviter les problèmes de SSR
+  // Désactiver complètement le SSR pour les bibliothèques problématiques
   ssr: {
-    noExternal: ['chart.js', 'react-chartjs-2'],
+    // Traiter ces modules comme externes en SSR
+    external: [
+      'chart.js',
+      'react-chartjs-2',
+      // Autres bibliothèques qui pourraient causer des problèmes en SSR
+      'recharts',
+      'xlsx'
+    ],
+    // Ne pas transformer ces modules en SSR
+    noExternal: []
   },
 });
