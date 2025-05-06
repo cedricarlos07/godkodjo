@@ -4,7 +4,7 @@ services:
     env: node
     nodeVersion: 18.18.0
     buildCommand: npm run render:build
-    startCommand: npm run render:start
+    startCommand: npm run render:safe-start
     envVars:
       - key: NODE_ENV
         value: production
