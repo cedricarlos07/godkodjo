@@ -12,7 +12,10 @@
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:init": "node init-sqlite-db.js",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:check": "node -e \"try { require('better-sqlite3'); console.log('better-sqlite3 is working correctly!'); } catch (e) { console.error('Error loading better-sqlite3:', e.message); process.exit(1); }\"",
+    "db:rebuild": "npm rebuild better-sqlite3 --build-from-source",
+    "db:reinstall": "npm uninstall better-sqlite3 && npm install better-sqlite3 --build-from-source"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

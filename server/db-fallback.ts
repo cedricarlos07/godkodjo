@@ -1,60 +1,53 @@
+// Base de données de secours en cas d'échec de better-sqlite3
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import * as schema from "@shared/schema";
-import path from 'path';
+import * as schema from './schema';
 import fs from 'fs';
-import dotenv from 'dotenv';
+import path from 'path';
 
-// Charger les variables d'environnement
-dotenv.config();
-
-// Vérifier le type de base de données
-if (process.env.DATABASE_TYPE !== 'sqlite') {
-  throw new Error(
-    "DATABASE_TYPE doit être 'sqlite'. Veuillez configurer votre fichier .env.",
-  );
-}
-
-// Fonction pour initialiser la base de données avec gestion des erreurs
-function initializeDatabase() {
+// Fonction pour initialiser la base de données
+export function initializeDatabase() {
+  console.log('Initialisation de la base de données...');
+  
   try {
-    // Assurez-vous que le répertoire de la base de données existe
-    const dbDir = path.dirname(process.env.DATABASE_PATH || './data/kodjo-english.db');
+    // Essayer d'utiliser better-sqlite3 avec un fichier
+    const dbPath = process.env.DATABASE_PATH || './data/kodjo-english-v2.db';
+    console.log(`Utilisation de la base de données SQLite: ${dbPath}`);
+    
+    // S'assurer que le répertoire existe
+    const dbDir = path.dirname(dbPath);
     if (!fs.existsSync(dbDir)) {
+      console.log(`Création du répertoire ${dbDir}...`);
       fs.mkdirSync(dbDir, { recursive: true });
     }
-
-    // Chemin vers le fichier de base de données SQLite
-    const dbPath = process.env.DATABASE_PATH || './data/kodjo-english.db';
-    console.log(`Utilisation de la base de données SQLite: ${dbPath}`);
-
-    // Créer une connexion à la base de données SQLite
+    
+    // Créer la connexion à la base de données
     const sqlite = new Database(dbPath);
-
+    
     // Configurer la base de données
     sqlite.pragma('journal_mode = WAL');
     sqlite.pragma('foreign_keys = ON');
-
-    // Créer une instance de Drizzle avec le schéma
+    
+    // Créer l'instance drizzle
     const db = drizzle(sqlite, { schema });
-
+    
     console.log('Base de données SQLite initialisée avec succès.');
     return { db, sqlite };
   } catch (error) {
     console.error('Erreur lors de l\'initialisation de la base de données SQLite:', error);
-
-    // En cas d'erreur, essayer d'utiliser une base de données en mémoire
+    console.log('Tentative d\'utilisation d\'une base de données en mémoire...');
+    
     try {
-      console.log('Tentative d\'utilisation d\'une base de données en mémoire...');
+      // Utiliser une base de données en mémoire comme solution de secours
       const sqlite = new Database(':memory:');
-
+      
       // Configurer la base de données
       sqlite.pragma('journal_mode = WAL');
       sqlite.pragma('foreign_keys = ON');
-
-      // Créer une instance de Drizzle avec le schéma
+      
+      // Créer l'instance drizzle
       const db = drizzle(sqlite, { schema });
-
+      
       console.log('Base de données SQLite en mémoire initialisée avec succès.');
       return { db, sqlite };
     } catch (fallbackError) {
@@ -64,5 +57,5 @@ function initializeDatabase() {
   }
 }
 
-// Initialiser la base de données et exporter les instances
+// Exporter une instance de la base de données
 export const { db, sqlite } = initializeDatabase();

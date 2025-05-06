@@ -10,6 +10,25 @@ echo "NPM version: $(npm -v)"
 echo "Installing dependencies..."
 npm ci || npm install
 
+# Reconstruire les modules natifs pour la version actuelle de Node.js
+echo "Rebuilding native modules..."
+npm rebuild better-sqlite3 --build-from-source
+
+# Vérifier si la reconstruction a réussi
+if [ $? -ne 0 ]; then
+  echo "Failed to rebuild better-sqlite3, trying alternative approach..."
+
+  # Désinstaller et réinstaller better-sqlite3
+  npm uninstall better-sqlite3
+  npm install better-sqlite3 --build-from-source
+
+  # Vérifier si l'installation a réussi
+  if [ $? -ne 0 ]; then
+    echo "Failed to install better-sqlite3!"
+    exit 1
+  fi
+fi
+
 # Essayer le build avec la configuration de production
 echo "Trying production build..."
 npm run build:prod
