@@ -11,7 +11,7 @@ import { fr } from "date-fns/locale";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, LineChart, PieChart } from "@/components/ui/charts";
+import { BarChart, LineChart, PieChart } from "@/components/ui/ssr-safe-chart";
 
 // Types pour les statistiques détaillées
 interface TopUser {

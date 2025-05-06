@@ -31,7 +31,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { BarChart, LineChart } from "@/components/ui/charts";
+import { BarChart, LineChart } from "@/components/ui/ssr-safe-chart";
 
 // Types
 interface TestFeature {
