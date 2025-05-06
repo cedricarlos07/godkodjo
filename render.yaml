@@ -4,7 +4,7 @@ services:
     env: node
     nodeVersion: 18.18.0
     buildCommand: npm run render:build
-    startCommand: npm run fix:paths && npm run render:safe-start
+    startCommand: npm run start:pg
     envVars:
       - key: NODE_ENV
         value: production
@@ -13,9 +13,7 @@ services:
       - key: VITE_DISABLE_CHARTS_SSR
         value: "true"
       - key: DATABASE_TYPE
-        value: sqlite
-      - key: DATABASE_PATH
-        value: ./data/kodjo-english-v2.db
+        value: postgres
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: ZOOM_CLIENT_ID
@@ -26,11 +24,16 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
-      - key: DATABASE_TYPE
-        value: sqlite
-      - key: DATABASE_PATH
-        value: ./data/kodjo-english-v2.db
+      - fromDatabase:
+          name: kodjo-english-db
+          property: connectionString
+        key: DATABASE_URL
     disk:
       name: data
       mountPath: /opt/render/project/src/data
       sizeGB: 1
+
+databases:
+  - name: kodjo-english-db
+    plan: free
+    ipAllowList: []
