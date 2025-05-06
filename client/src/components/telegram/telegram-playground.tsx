@@ -768,23 +768,29 @@ export function TelegramPlayground({
                       </CardHeader>
                       <CardContent>
                         <div className="h-64">
-                          <BarChart
-                            data={{
-                              labels: groupStats.dayOfWeekActivity.map((d: any) => {
-                                const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-                                return days[d.day];
-                              }),
-                              datasets: [
-                                {
-                                  label: "Messages",
-                                  data: groupStats.dayOfWeekActivity.map((d: any) => d.count),
-                                  backgroundColor: "rgba(59, 130, 246, 0.5)",
-                                  borderColor: "rgb(59, 130, 246)",
-                                  borderWidth: 1,
-                                },
-                              ],
-                            }}
-                          />
+                          {typeof window !== 'undefined' ? (
+                            <BarChart
+                              data={{
+                                labels: groupStats.dayOfWeekActivity.map((d: any) => {
+                                  const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+                                  return days[d.day];
+                                }),
+                                datasets: [
+                                  {
+                                    label: "Messages",
+                                    data: groupStats.dayOfWeekActivity.map((d: any) => d.count),
+                                    backgroundColor: "rgba(59, 130, 246, 0.5)",
+                                    borderColor: "rgb(59, 130, 246)",
+                                    borderWidth: 1,
+                                  },
+                                ],
+                              }}
+                            />
+                          ) : (
+                            <div className="flex justify-center items-center h-full text-gray-500">
+                              Graphique non disponible
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -798,20 +804,26 @@ export function TelegramPlayground({
                       </CardHeader>
                       <CardContent>
                         <div className="h-64">
-                          <BarChart
-                            data={{
-                              labels: groupStats.hourlyActivity.map((h: any) => `${h.hour}h`),
-                              datasets: [
-                                {
-                                  label: "Messages",
-                                  data: groupStats.hourlyActivity.map((h: any) => h.count),
-                                  backgroundColor: "rgba(16, 185, 129, 0.5)",
-                                  borderColor: "rgb(16, 185, 129)",
-                                  borderWidth: 1,
-                                },
-                              ],
-                            }}
-                          />
+                          {typeof window !== 'undefined' ? (
+                            <BarChart
+                              data={{
+                                labels: groupStats.hourlyActivity.map((h: any) => `${h.hour}h`),
+                                datasets: [
+                                  {
+                                    label: "Messages",
+                                    data: groupStats.hourlyActivity.map((h: any) => h.count),
+                                    backgroundColor: "rgba(16, 185, 129, 0.5)",
+                                    borderColor: "rgb(16, 185, 129)",
+                                    borderWidth: 1,
+                                  },
+                                ],
+                              }}
+                            />
+                          ) : (
+                            <div className="flex justify-center items-center h-full text-gray-500">
+                              Graphique non disponible
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -825,21 +837,27 @@ export function TelegramPlayground({
                       </CardHeader>
                       <CardContent>
                         <div className="h-64">
-                          <LineChart
-                            data={{
-                              labels: groupStats.dailyActivity.map((d: any) => d.date),
-                              datasets: [
-                                {
-                                  label: "Messages",
-                                  data: groupStats.dailyActivity.map((d: any) => d.count),
-                                  backgroundColor: "rgba(249, 115, 22, 0.5)",
-                                  borderColor: "rgb(249, 115, 22)",
-                                  borderWidth: 1,
-                                  tension: 0.4,
-                                },
-                              ],
-                            }}
-                          />
+                          {typeof window !== 'undefined' ? (
+                            <LineChart
+                              data={{
+                                labels: groupStats.dailyActivity.map((d: any) => d.date),
+                                datasets: [
+                                  {
+                                    label: "Messages",
+                                    data: groupStats.dailyActivity.map((d: any) => d.count),
+                                    backgroundColor: "rgba(249, 115, 22, 0.5)",
+                                    borderColor: "rgb(249, 115, 22)",
+                                    borderWidth: 1,
+                                    tension: 0.4,
+                                  },
+                                ],
+                              }}
+                            />
+                          ) : (
+                            <div className="flex justify-center items-center h-full text-gray-500">
+                              Graphique non disponible
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

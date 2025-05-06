@@ -255,7 +255,7 @@ export default function TelegramDetailedStats() {
                       <div className="flex items-center gap-2">
                         {index < 3 && (
                           <Award className={`h-5 w-5 ${
-                            index === 0 ? "text-yellow-500" : 
+                            index === 0 ? "text-yellow-500" :
                             index === 1 ? "text-gray-400" : "text-amber-700"
                           }`} />
                         )}
@@ -289,7 +289,13 @@ export default function TelegramDetailedStats() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      {chartData && <LineChart data={chartData.dailyData} />}
+                      {chartData && typeof window !== 'undefined' ? (
+                        <LineChart data={chartData.dailyData} />
+                      ) : (
+                        <div className="flex justify-center items-center h-full text-gray-500">
+                          Graphique non disponible
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -302,7 +308,13 @@ export default function TelegramDetailedStats() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      {chartData && <BarChart data={chartData.dayOfWeekData} />}
+                      {chartData && typeof window !== 'undefined' ? (
+                        <BarChart data={chartData.dayOfWeekData} />
+                      ) : (
+                        <div className="flex justify-center items-center h-full text-gray-500">
+                          Graphique non disponible
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -315,7 +327,13 @@ export default function TelegramDetailedStats() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      {chartData && <BarChart data={chartData.hourlyData} />}
+                      {chartData && typeof window !== 'undefined' ? (
+                        <BarChart data={chartData.hourlyData} />
+                      ) : (
+                        <div className="flex justify-center items-center h-full text-gray-500">
+                          Graphique non disponible
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
