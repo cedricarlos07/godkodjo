@@ -59,6 +59,7 @@ export default function Sidebar() {
     { section: "COURS", path: "/users", label: "Utilisateurs", icon: <Users className="h-5 w-5" /> },
     { section: "OUTILS", path: "/telegram", label: "Bot Telegram", icon: <FaTelegram className="h-5 w-5" /> },
     { path: "/telegram/playground", label: "Playground Telegram", icon: <Zap className="h-5 w-5" /> },
+    { path: "/telegram/stats", label: "Statistiques Détaillées", icon: <BarChart3 className="h-5 w-5" /> },
     { path: "/zoom", label: "Réunions Zoom", icon: <Video className="h-5 w-5" /> },
     { path: "/badges", label: "Badges & Points", icon: <Award className="h-5 w-5" /> },
     { path: "/automations", label: "Automatisations", icon: <Bot className="h-5 w-5" /> },

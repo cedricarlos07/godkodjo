@@ -23,6 +23,7 @@ import telegramTestRoutes from './routes/telegram-test-routes';
 import telegramTestDebugRoutes from './routes/telegram-test-routes-debug';
 import telegramWebhookRoutes from './routes/telegram-webhook-routes';
 import telegramChannelRoutes from './routes/telegram-channel-routes';
+import telegramStatsRoutes from './routes/telegram-stats-routes';
 import statisticsRoutes from './routes/statistics-routes';
 import zoomMeetingsRoutes from './routes/zoom-meetings-routes';
 import zoomRoutes from './routes/zoom-routes';
@@ -49,6 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api', telegramTestDebugRoutes);
   app.use('/api', telegramWebhookRoutes);
   app.use('/api', telegramChannelRoutes);
+  app.use('/api', telegramStatsRoutes);
   app.use('/api', statisticsRoutes);
   app.use('/api', zoomMeetingsRoutes);
   app.use('/api', zoomRoutes);

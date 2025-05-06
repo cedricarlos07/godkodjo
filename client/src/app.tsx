@@ -72,6 +72,7 @@ function AppRoutes() {
       <ProtectedRoute path="/badges" component={LayoutBadgesPage} />
       <ProtectedRoute path="/telegram" component={LayoutTelegramPage} />
       <ProtectedRoute path="/telegram/playground" component={LayoutTelegramPlaygroundPage} />
+      <ProtectedRoute path="/telegram/stats" component={LayoutTelegramStatsPage} />
       <ProtectedRoute path="/zoom" component={LayoutZoomPage} />
       <ProtectedRoute path="/automations" component={LayoutAutomationPage} />
       <ProtectedRoute path="/statistics" component={LayoutStatisticsPage} />
