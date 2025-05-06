@@ -14,7 +14,9 @@ import {
   ArrowRightLeft,
   Send,
   AlertCircle,
-  Zap
+  Zap,
+  BarChart3,
+  Award
 } from "lucide-react";
 import { FaTelegram } from "react-icons/fa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,9 +27,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/use-toast";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { BarChart, LineChart } from "@/components/ui/charts";
 
 // Types
 interface TestFeature {
@@ -62,6 +66,8 @@ export function TelegramPlayground({
   const [channelForwardId, setChannelForwardId] = useState("@kodjoenglish");
   const [channelForwardName, setChannelForwardName] = useState("KODJO ENGLISH");
   const [targetGroups, setTargetGroups] = useState<{ id: string; name: string }[]>([]);
+  const [groupStats, setGroupStats] = useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [features, setFeatures] = useState<TestFeature[]>([
     {
       id: "countMembers",
@@ -382,7 +388,33 @@ export function TelegramPlayground({
     executeAllForwardsMutation.mutate();
   };
 
-  // Charger les groupes cibles au chargement du composant
+  // Fonction pour charger les statistiques du groupe
+  const fetchGroupStats = async () => {
+    if (!groupId || !isConnected) return;
+
+    try {
+      setIsLoadingStats(true);
+      addLog(`Chargement des statistiques pour le groupe ${groupId}...`);
+
+      const response = await apiRequestXHR("GET", `/api/telegram/group-stats/${groupId}`);
+      setGroupStats(response);
+
+      addLog(`Statistiques chargées avec succès pour le groupe ${groupId}`);
+    } catch (error) {
+      console.error("Erreur lors du chargement des statistiques:", error);
+      addLog(`Erreur lors du chargement des statistiques: ${error.message}`);
+
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les statistiques du groupe.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+
+  // Charger les groupes cibles et les statistiques au chargement du composant
   useEffect(() => {
     const fetchTargetGroups = async () => {
       try {
@@ -401,8 +433,9 @@ export function TelegramPlayground({
 
     if (isConnected) {
       fetchTargetGroups();
+      fetchGroupStats();
     }
-  }, [isConnected]);
+  }, [isConnected, groupId]);
 
   return (
     <div className="space-y-6">
@@ -422,6 +455,7 @@ export function TelegramPlayground({
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="channel">Transfert Canal</TabsTrigger>
               <TabsTrigger value="features">Fonctionnalités</TabsTrigger>
+              <TabsTrigger value="stats">Statistiques</TabsTrigger>
               <TabsTrigger value="logs">Logs</TabsTrigger>
             </TabsList>
 
@@ -634,6 +668,196 @@ export function TelegramPlayground({
                   </Card>
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="stats" className="space-y-4">
+              {isLoadingStats ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : groupStats ? (
+                <div className="space-y-6">
+                  {/* Résumé du groupe */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-lg">Statistiques du groupe</CardTitle>
+                          <CardDescription>
+                            {groupStats.courseName || "Groupe Telegram"}
+                            {groupStats.teacherName && ` - Coach: ${groupStats.teacherName}`}
+                          </CardDescription>
+                        </div>
+                        <Button
+                          onClick={fetchGroupStats}
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoadingStats}
+                        >
+                          {isLoadingStats ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-5 w-5 text-blue-500" />
+                          <span>{groupStats.memberCount || 0} membres</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5 text-green-500" />
+                          <span>{groupStats.messageCount || 0} messages</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-5 w-5 text-orange-500" />
+                          <span>
+                            Dernière activité: {
+                              groupStats.lastActivity
+                                ? formatDistanceToNow(new Date(groupStats.lastActivity), { addSuffix: true, locale: fr })
+                                : "Aucune activité récente"
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Utilisateurs les plus actifs */}
+                  {groupStats.topUsers && groupStats.topUsers.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Utilisateurs les plus actifs</CardTitle>
+                        <CardDescription>Top 5 des utilisateurs par nombre de messages</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {groupStats.topUsers.map((user: any, index: number) => (
+                            <div key={user.userId} className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {index < 3 && (
+                                  <Award className={`h-5 w-5 ${
+                                    index === 0 ? "text-yellow-500" :
+                                    index === 1 ? "text-gray-400" : "text-amber-700"
+                                  }`} />
+                                )}
+                                <span>Utilisateur {user.userId}</span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span>{user.messageCount} messages</span>
+                                <Progress
+                                  value={(user.messageCount / (groupStats.topUsers[0]?.messageCount || 1)) * 100}
+                                  className="h-2 w-32"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Graphiques d'activité */}
+                  {groupStats.dayOfWeekActivity && groupStats.dayOfWeekActivity.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Activité par jour de la semaine</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <BarChart
+                            data={{
+                              labels: groupStats.dayOfWeekActivity.map((d: any) => {
+                                const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+                                return days[d.day];
+                              }),
+                              datasets: [
+                                {
+                                  label: "Messages",
+                                  data: groupStats.dayOfWeekActivity.map((d: any) => d.count),
+                                  backgroundColor: "rgba(59, 130, 246, 0.5)",
+                                  borderColor: "rgb(59, 130, 246)",
+                                  borderWidth: 1,
+                                },
+                              ],
+                            }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Activité par heure */}
+                  {groupStats.hourlyActivity && groupStats.hourlyActivity.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Activité par heure de la journée</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <BarChart
+                            data={{
+                              labels: groupStats.hourlyActivity.map((h: any) => `${h.hour}h`),
+                              datasets: [
+                                {
+                                  label: "Messages",
+                                  data: groupStats.hourlyActivity.map((h: any) => h.count),
+                                  backgroundColor: "rgba(16, 185, 129, 0.5)",
+                                  borderColor: "rgb(16, 185, 129)",
+                                  borderWidth: 1,
+                                },
+                              ],
+                            }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Activité quotidienne */}
+                  {groupStats.dailyActivity && groupStats.dailyActivity.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Activité quotidienne (30 derniers jours)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <LineChart
+                            data={{
+                              labels: groupStats.dailyActivity.map((d: any) => d.date),
+                              datasets: [
+                                {
+                                  label: "Messages",
+                                  data: groupStats.dailyActivity.map((d: any) => d.count),
+                                  backgroundColor: "rgba(249, 115, 22, 0.5)",
+                                  borderColor: "rgb(249, 115, 22)",
+                                  borderWidth: 1,
+                                  tension: 0.4,
+                                },
+                              ],
+                            }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Aucune donnée statistique disponible pour ce groupe.</p>
+                  <Button
+                    onClick={fetchGroupStats}
+                    variant="outline"
+                    className="mt-4"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Charger les statistiques
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-4">
