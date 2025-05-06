@@ -30,6 +30,8 @@
     "render:build": "chmod +x render-build.sh && ./render-build.sh",
     "render:safe-start": "node fix-path-error.js && node no-sqlite.js && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js",
     "render:pg-start": "chmod +x render-pg-start.sh && ./render-pg-start.sh",
+    "render:direct-fix": "chmod +x render-direct-fix.sh && ./render-direct-fix.sh",
+    "direct-fix": "node direct-fix.cjs && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js",
     "check:pg": "node check-pg-connection.js"
   },
   "dependencies": {
