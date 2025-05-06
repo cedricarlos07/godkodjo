@@ -60,17 +60,18 @@ export function setupAuth(app: Express) {
   app.use(session({
     store: sessionStore,
     secret: process.env.SESSION_SECRET || 'kodjo-english-secret',
-    resave: true, // Changé à true pour forcer la sauvegarde de la session
-    saveUninitialized: true, // Changé à true pour créer une session pour chaque visiteur
-    name: 'kodjo.sid', // Nom personnalisé pour le cookie de session
+    resave: true,
+    saveUninitialized: true,
+    name: 'kodjo.sid',
     cookie: {
       secure: false, // Désactivé pour permettre HTTP
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 semaine
-      sameSite: 'none', // Permet les requêtes cross-site
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 jours
+      sameSite: 'lax', // Plus compatible que 'none'
       httpOnly: true,
       path: '/',
     },
-    proxy: true, // Important pour Render
+    rolling: true, // Réinitialiser l'expiration du cookie à chaque requête
+    proxy: true,
   }));
 
   // Initialize Passport

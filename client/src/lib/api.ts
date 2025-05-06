@@ -26,11 +26,11 @@ export async function apiRequest(
     console.log(`Requête API: ${method} ${endpoint}`, data ? data : '');
     const response = await fetch(endpoint, options);
 
-    // Si la réponse est un 401 (non autorisé), rediriger vers la page de connexion
+    // Si la réponse est un 401 (non autorisé), ne pas rediriger automatiquement
+    // Laisser le hook useAuth gérer la redirection
     if (response.status === 401) {
       console.error('Erreur d\'authentification (401):', endpoint);
-      window.location.href = '/auth';
-      return Promise.reject('Non autorisé');
+      return Promise.reject(new Error('Non autorisé'));
     }
 
     // Vérifier si la réponse est OK (statut 2xx)

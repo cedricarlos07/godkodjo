@@ -64,11 +64,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkUser = async () => {
       setIsLoading(true);
       try {
+        console.log("Vérification de l'authentification...");
         const res = await fetch('/api/user', {
           credentials: 'include',
+          cache: 'no-cache', // Éviter la mise en cache
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
         });
 
+        console.log("Réponse de /api/user:", res.status, res.statusText);
+
         if (res.status === 401) {
+          console.log("Non authentifié (401)");
           setUser(null);
           return;
         }
@@ -78,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const userData = await res.json();
+        console.log("Utilisateur authentifié:", userData);
         setUser(userData);
       } catch (err) {
         console.error('Error fetching user:', err);
@@ -89,6 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkUser();
+
+    // Vérifier l'authentification toutes les 30 secondes
+    const interval = setInterval(checkUser, 30000);
+
+    // Nettoyer l'intervalle lors du démontage du composant
+    return () => clearInterval(interval);
   }, []);
 
   const login = async (credentials: LoginData) => {
@@ -97,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await apiRequest('POST', '/api/login', credentials);
       const userData = await res.json();
-      
+
       setUser(userData);
       toast({
         title: 'Login successful',
@@ -122,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await apiRequest('POST', '/api/register', userData);
       const newUser = await res.json();
-      
+
       setUser(newUser);
       toast({
         title: 'Registration successful',
@@ -146,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       await apiRequest('POST', '/api/logout');
-      
+
       setUser(null);
       toast({
         title: 'Logged out',
