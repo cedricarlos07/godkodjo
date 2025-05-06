@@ -26,11 +26,18 @@ export const initTelegramBot = () => {
   }
 
   try {
-    telegramBot = new TelegramBot(telegramToken, { polling: true });
-    console.log('Telegram bot initialized successfully');
+    // En production, utiliser le mode webhook au lieu du polling
+    // pour éviter les conflits entre plusieurs instances
+    if (process.env.NODE_ENV === 'production') {
+      telegramBot = new TelegramBot(telegramToken, { polling: false });
+      console.log('Telegram bot initialized in webhook mode (production)');
+    } else {
+      telegramBot = new TelegramBot(telegramToken, { polling: true });
+      console.log('Telegram bot initialized in polling mode (development)');
 
-    // Listen for messages in groups
-    telegramBot.on('message', handleMessage);
+      // Listen for messages in groups (only in polling mode)
+      telegramBot.on('message', handleMessage);
+    }
 
     return telegramBot;
   } catch (error) {

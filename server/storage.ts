@@ -433,9 +433,14 @@ export class DatabaseStorage implements IStorage {
   // Activity log operations
   async logActivity(activityData: InsertActivityLog): Promise<ActivityLog> {
     const now = Date.now();
+    // Si activityData.createdAt est un objet Date, le convertir en timestamp
+    const createdAt = activityData.createdAt instanceof Date
+      ? activityData.createdAt.getTime()
+      : (activityData.createdAt || now);
+
     const result = await db.insert(activityLogs).values({
       ...activityData,
-      createdAt: now
+      createdAt: createdAt
     }).returning();
 
     return result[0];
@@ -584,16 +589,18 @@ export class DatabaseStorage implements IStorage {
     // Convertir la date en début et fin de journée
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
+    const startTimestamp = startOfDay.getTime();
 
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
+    const endTimestamp = endOfDay.getTime();
 
     return await db.select()
       .from(messageLogs)
       .where(
         and(
-          sql`${messageLogs.date} >= ${startOfDay.getTime()}`,
-          sql`${messageLogs.date} <= ${endOfDay.getTime()}`
+          sql`${messageLogs.date} >= ${startTimestamp}`,
+          sql`${messageLogs.date} <= ${endTimestamp}`
         )
       )
       .orderBy(messageLogs.time);
@@ -616,9 +623,11 @@ export class DatabaseStorage implements IStorage {
     // Convertir la date en début et fin de journée
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
+    const startTimestamp = startOfDay.getTime();
 
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
+    const endTimestamp = endOfDay.getTime();
 
     // Récupérer les sessions prévues pour ce jour
     const query = db.select({
@@ -632,8 +641,8 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(users, eq(sessions.professorId, users.id))
     .where(
       and(
-        sql`${sessions.scheduledDate} >= ${startOfDay.getTime()}`,
-        sql`${sessions.scheduledDate} <= ${endOfDay.getTime()}`
+        sql`${sessions.scheduledDate} >= ${startTimestamp}`,
+        sql`${sessions.scheduledDate} <= ${endTimestamp}`
       )
     )
     .orderBy(sessions.scheduledTime);
