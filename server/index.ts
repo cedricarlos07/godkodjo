@@ -123,7 +123,7 @@ app.use((req, res, next) => {
   const port = 5007;
   server.listen({
     port,
-    host: "localhost",
+    host: "0.0.0.0", // Écouter sur toutes les interfaces réseau
   }, () => {
     log(`serving on port ${port}`);
 

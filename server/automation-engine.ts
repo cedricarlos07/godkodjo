@@ -433,9 +433,10 @@ async function checkForCustomDailyMessageRules() {
             console.log(`Envoi matinal des messages de cours planifié selon la règle "${rule.name}" (${cronExpression})`);
 
             // Mettre à jour la prochaine date d'envoi
-            const nextSend = getNextExecutionTime(cronExpression);
+            const nextSendDate = getNextExecutionTime(cronExpression);
+            const nextSendTimestamp = nextSendDate.getTime();
             await db.update(automationRules)
-              .set({ nextSend })
+              .set({ nextSend: nextSendTimestamp })
               .where(eq(automationRules.id, rule.id));
           } else {
             console.error(`Expression CRON invalide pour la règle ${rule.name}: ${cronExpression}`);
@@ -573,8 +574,9 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
 
     // Si une règle spécifique a été utilisée, mettre à jour sa dernière date d'exécution
     if (rule) {
+      const now = Date.now();
       await db.update(automationRules)
-        .set({ lastSent: new Date() })
+        .set({ lastSent: now })
         .where(eq(automationRules.id, rule.id));
     }
 
