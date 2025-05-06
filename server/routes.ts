@@ -60,6 +60,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('Error initializing scheduler:', error);
   });
 
+  // Route de débogage pour vérifier l'état de l'authentification
+  app.get("/api/auth-debug", (req, res) => {
+    const sessionInfo = {
+      isAuthenticated: req.isAuthenticated(),
+      sessionID: req.sessionID,
+      user: req.user ? {
+        id: req.user.id,
+        username: req.user.username,
+        role: req.user.role
+      } : null,
+      cookies: req.headers.cookie,
+      session: req.session
+    };
+
+    console.log("Auth Debug Info:", sessionInfo);
+    res.json(sessionInfo);
+  });
+
+  // Middleware de débogage spécifique pour la route /api/user
+  app.use('/api/user', (req, res, next) => {
+    console.log('Requête /api/user reçue:');
+    console.log('- Headers:', req.headers);
+    console.log('- Cookies:', req.headers.cookie);
+    console.log('- Session ID:', req.sessionID);
+    console.log('- isAuthenticated:', req.isAuthenticated());
+    console.log('- User:', req.user);
+    next();
+  });
+
   // ===== User Routes =====
 
   // Get all users

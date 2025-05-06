@@ -13,10 +13,19 @@ app.use(express.urlencoded({ extended: false }));
 
 // Ajouter des en-têtes CORS explicites
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  // Utiliser l'origine de la requête au lieu de '*' pour permettre les credentials
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    // Fallback pour les requêtes sans origine (comme les requêtes directes)
+    res.header('Access-Control-Allow-Origin', 'https://kodjo-english-app.onrender.com');
+  }
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Vary', 'Origin'); // Important pour le caching correct avec CORS
 
   // Répondre directement aux requêtes OPTIONS (préflight)
   if (req.method === 'OPTIONS') {

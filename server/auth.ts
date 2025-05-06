@@ -67,12 +67,15 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      // Désactiver temporairement secure pour tester
+      secure: false, // Normalement: process.env.NODE_ENV === "production"
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       sameSite: 'lax', // Permet l'envoi des cookies lors de la navigation
       httpOnly: true, // Empêche l'accès aux cookies via JavaScript
       path: '/', // Assure que le cookie est disponible sur tout le site
+      domain: '.onrender.com', // Domaine pour les cookies (optionnel)
     },
+    proxy: true, // Faire confiance au proxy (important pour Render)
   }));
 
   // Initialize Passport
@@ -231,12 +234,28 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
+    console.log("=== ROUTE /api/user ===");
+    console.log("Session ID:", req.sessionID);
+    console.log("Session:", req.session);
+    console.log("Cookies:", req.headers.cookie);
+    console.log("isAuthenticated:", req.isAuthenticated());
+    console.log("User:", req.user);
+
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+      console.log("Utilisateur non authentifié - Retour 401");
+      return res.status(401).json({
+        error: "Not authenticated",
+        debug: {
+          sessionExists: !!req.session,
+          sessionID: req.sessionID,
+          cookies: req.headers.cookie
+        }
+      });
     }
 
     // Remove password from response
     const { password, ...userWithoutPassword } = req.user as User;
+    console.log("Utilisateur authentifié - Retour des données utilisateur");
     res.json(userWithoutPassword);
   });
 }
