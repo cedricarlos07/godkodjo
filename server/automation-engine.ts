@@ -123,7 +123,7 @@ async function executeAutomationRule(rule: typeof automationRules.$inferSelect) 
       type: "automation_executed",
       description: `Automatisation "${rule.name}" exécutée avec succès`,
       metadata: JSON.stringify(rule),
-      createdAt: new Date()
+      createdAt: Date.now()
     });
   } catch (error) {
     console.error(`Erreur lors de l'exécution de l'automatisation "${rule.name}":`, error);
@@ -133,7 +133,7 @@ async function executeAutomationRule(rule: typeof automationRules.$inferSelect) 
       type: "automation_error",
       description: `Erreur lors de l'exécution de l'automatisation "${rule.name}"`,
       metadata: JSON.stringify({ rule, error: error.message }),
-      createdAt: new Date()
+      createdAt: Date.now()
     });
   }
 }
@@ -155,7 +155,7 @@ async function executeSessionAutomation(rule: typeof automationRules.$inferSelec
       type: "automation_executed",
       description: `Automatisation "${rule.name}" exécutée pour la session #${session.sessionNumber}`,
       metadata: JSON.stringify({ rule, sessionId: session.id }),
-      createdAt: new Date()
+      createdAt: Date.now()
     });
   } catch (error) {
     console.error(`Erreur lors de l'exécution de l'automatisation "${rule.name}" pour la session #${session.sessionNumber}:`, error);
@@ -165,7 +165,7 @@ async function executeSessionAutomation(rule: typeof automationRules.$inferSelec
       type: "automation_error",
       description: `Erreur lors de l'exécution de l'automatisation "${rule.name}" pour la session #${session.sessionNumber}`,
       metadata: JSON.stringify({ rule, sessionId: session.id, error: error.message }),
-      createdAt: new Date()
+      createdAt: Date.now()
     });
   }
 }
@@ -542,7 +542,7 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
 
         // Enregistrer le message envoyé
         await storage.createMessageLog({
-          date: today,
+          date: today.getTime(),
           time: session.scheduledTime,
           courseId: course.id,
           sessionId: session.id,
@@ -550,7 +550,7 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
           status: "sent",
           telegramGroupId: course.telegramGroupLink,
           zoomLink: session.zoomMeetingUrl || "",
-          createdAt: new Date()
+          createdAt: Date.now()
         });
 
         console.log(`Message envoyé pour le cours ${course.name} dans le groupe Telegram`);
@@ -559,7 +559,7 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
 
         // Enregistrer l'erreur
         await storage.createMessageLog({
-          date: today,
+          date: today.getTime(),
           time: session.scheduledTime,
           courseId: course.id,
           sessionId: session.id,
@@ -567,7 +567,7 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
           status: "error",
           telegramGroupId: course.telegramGroupLink,
           zoomLink: session.zoomMeetingUrl || "",
-          createdAt: new Date()
+          createdAt: Date.now()
         });
       }
     }
@@ -585,7 +585,7 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
       type: "daily_messages_sent",
       description: `Messages de rappel envoyés pour ${dailyCourses.length} cours`,
       metadata: JSON.stringify({ date: today.toISOString() }),
-      createdAt: new Date()
+      createdAt: Date.now()
     });
   } catch (error) {
     console.error("Erreur lors de l'envoi des messages de cours du jour:", error);
@@ -595,7 +595,7 @@ export async function sendDailyCoursesMessages(rule?: typeof automationRules.$in
       type: "daily_messages_error",
       description: "Erreur lors de l'envoi des messages de cours du jour",
       metadata: JSON.stringify({ error: error.message }),
-      createdAt: new Date()
+      createdAt: Date.now()
     });
   }
 }
