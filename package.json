@@ -12,6 +12,8 @@
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "start:memory": "cross-env NODE_ENV=production USE_MEMORY_DB=true node memory-db-start.js",
     "start:no-sqlite": "node no-sqlite.js && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js",
+    "start:safe": "node safe-start.js",
+    "fix:paths": "node fix-path-error.js",
     "check": "tsc",
     "db:init": "node init-sqlite-db.js",
     "db:push": "drizzle-kit push",
@@ -22,7 +24,7 @@
     "db:diagnose": "node check-deps.js && node check-db-status.js",
     "render:start": "chmod +x render-start.sh && ./render-start.sh",
     "render:build": "chmod +x render-build.sh && ./render-build.sh",
-    "render:safe-start": "node no-sqlite.js && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js"
+    "render:safe-start": "node fix-path-error.js && node no-sqlite.js && cross-env NODE_ENV=production USE_MEMORY_DB=true node dist/index.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
